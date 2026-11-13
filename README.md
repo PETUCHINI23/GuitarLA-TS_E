@@ -126,6 +126,8 @@ useEffect(() => {
 
 **Justificación:** Este efecto actúa como un **observador de sincronización** (efecto secundario puro). Cada vez que el estado `cart` se actualiza por agregar, eliminar o modificar productos React ejecuta este efecto y persiste el nuevo estado serializado en `localStorage`. El array de dependencias `[cart]` garantiza que el efecto no se ejecute innecesariamente.
 
+Un segundo `useEffect` pide el catálogo a la API al montar el componente (ver *Manejo de Estados Asíncronos*).
+
 ---
 
 #### `useMemo`
@@ -188,7 +190,10 @@ const MAX_ITEMS = 5; // Unidades máximas por ítem
 
 ```typescript
 return {
-    data,            // Guitar[]     — Catálogo completo de guitarras
+    data,            // Guitar[]     — Catálogo traído de la API (GET /api/guitars)
+    loading,         // boolean      — true mientras se espera la respuesta de la API
+    error,           // string | null — mensaje si la API no responde
+    reloadGuitars,   // () => void   — vuelve a pedir el catálogo (tras registrar una guitarra)
     cart,            // CartItem[]   — Ítems actuales en el carrito
     addToCart,       // (item: Guitar) => void
     decreaseQuantity,// (id: number) => void
@@ -204,12 +209,12 @@ return {
 
 ```typescript
 // src/App.tsx — único punto de consumo
-const { cart, data, addToCart, decreaseQuantity,
-        increaseQuantity, removeFromCart, clearCart,
-        isEmpty, cartTotal } = useCart();
+const { cart, data, loading, error, reloadGuitars, addToCart,
+        decreaseQuantity, increaseQuantity, removeFromCart,
+        clearCart, isEmpty, cartTotal } = useCart();
 ```
 
-**Beneficio del patrón Custom Hook:** Si en el futuro se reemplaza `localStorage` por una API REST o un gestor de estado global, solo se modifica `useCart.ts` — ningún componente de presentación necesita cambios.
+**Beneficio del patrón Custom Hook:** el catálogo pasó de un arreglo estático a la API REST modificando solo `useCart.ts`; los componentes de presentación (`Header` y `Guitar`) no cambiaron.
 
 ---
 
@@ -220,7 +225,8 @@ const { cart, data, addToCart, decreaseQuantity,
 ```
 App (componente inteligente / contenedor)
 ├── Header (componente de presentación con comportamiento)
-└── Guitar (componente presentacional puro)
+├── Guitar (componente presentacional puro)
+└── GuitarForm (formulario controlado con validaciones; hace el POST a la API)
 ```
 
 #### Componentes Inteligentes (Smart / Container)
@@ -253,6 +259,12 @@ function App() {
 |---|---|---|
 | `Header` | `src/components/Header.tsx` | Renderiza el encabezado con logo y el carrito interactivo. Recibe todos sus datos y callbacks por props. No gestiona estado propio. |
 | `Guitar` | `src/components/Guitar.tsx` | Renderiza la tarjeta de un producto (imagen, nombre, descripción, precio, botón). Completamente stateless. |
+
+#### Componente con estado propio
+
+| Componente | Archivo | Responsabilidad |
+|---|---|---|
+| `GuitarForm` | `src/components/GuitarForm.tsx` | Formulario de registro. Maneja sus valores, errores y estado de envío con `useState`; valida en el cliente (campos vacíos, precio no numérico o menor o igual a 0) antes de llamar a `createGuitar()` y, si todo sale bien, avisa a `App` con `onCreated` para recargar el catálogo. Sus estilos están en `GuitarForm.css`, porque el CSS de Bootstrap embebido no incluye las clases de formularios. |
 
 #### Tipado de Props
 
@@ -394,16 +406,21 @@ cp .env.example .env        # Git Bash / Linux / Mac
 
 Si no existe el `.env`, se usa el valor por defecto.
 
-### Paso 4  Levantar la API
+### Paso 4  Levantar la API (backend)
 
-El backend vive en otro repositorio: https://github.com/PETUCHINI23/guitarsla-api.git (clónalo, sigue su README para PostgreSQL y `.env`). En otra terminal, dentro de la carpeta `guitarsla-api` (PostgreSQL encendido y `.env` configurado):
+El backend vive en otro repositorio: https://github.com/PETUCHINI23/guitarsla-api. En **otra terminal**, fuera de esta carpeta (el README de la API tiene el detalle):
 
 ```bash
+git clone https://github.com/PETUCHINI23/guitarsla-api.git
+cd guitarsla-api
 npm install
-npm run dev
+copy .env.example .env      # Windows (CMD); en Git Bash / Linux / Mac: cp .env.example .env
+docker compose up -d        # PostgreSQL en el puerto 5434 (requiere Docker Desktop encendido)
+npm run seed                # carga las 12 guitarras (solo si la tabla está vacía)
+npm run dev                 # API en http://localhost:4000/api/guitars
 ```
 
-La API debe quedar en `http://localhost:4000/api/guitars`. Si la base está vacía puedes cargar las 12 guitarras originales con `npm run seed`.
+Si no usas Docker, crea la base `guitarsla` en tu PostgreSQL y ajusta `DATABASE_URL` en el `.env` de la API. Para comprobar que responde, abre `http://localhost:4000/api/guitars` en el navegador: debe mostrar un JSON con las guitarras.
 
 ### Paso 5  Ejecutar el frontend
 
@@ -441,6 +458,7 @@ GuitarsLA-ts/
 ├── src/
 │   ├── components/
 │   │   ├── GuitarForm.tsx      # Formulario de registro con validaciones
+│   │   ├── GuitarForm.css      # Estilos del formulario
 │   │   ├── Guitar.tsx          # Componente presentacional — tarjeta de producto
 │   │   └── Header.tsx          # Componente presentacional — encabezado + carrito
 │   ├── services/
