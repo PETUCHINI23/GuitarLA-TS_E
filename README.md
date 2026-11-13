@@ -369,8 +369,8 @@ Al registrar una guitarra con el formulario (`GuitarForm`), se llama a `reloadGu
 ### Paso 1  Clonar el repositorio
 
 ```bash
-git clone https://github.com/PETUCHINI23/GuitarsLA-ts.git
-cd GuitarsLA-ts
+git clone https://github.com/PETUCHINI23/GuitarLA-TS_E.git
+cd GuitarLA-TS_E
 ```
 
 ### Paso 2  Instalar dependencias
@@ -396,7 +396,7 @@ Si no existe el `.env`, se usa el valor por defecto.
 
 ### Paso 4  Levantar la API
 
-En otra terminal, dentro de la carpeta `guitarsla-api` (PostgreSQL encendido y `.env` configurado):
+El backend vive en otro repositorio: https://github.com/PETUCHINI23/guitarsla-api.git (clónalo, sigue su README para PostgreSQL y `.env`). En otra terminal, dentro de la carpeta `guitarsla-api` (PostgreSQL encendido y `.env` configurado):
 
 ```bash
 npm install
